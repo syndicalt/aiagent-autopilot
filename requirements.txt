@@ -1,1 +1,3 @@
 watchdog
+sentence-transformers
+torch

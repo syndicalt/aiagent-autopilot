@@ -1,8 +1,9 @@
 from pathlib import Path
 from config import CATEGORY_MAP, IGNORE_PATTERNS
+import embedding_classifier
 
 def classify_file(file_path: Path) -> str:
-    """Classify a file into a category based on extension and name heuristics."""
+    """Classify a file into a category using heuristics first, then embeddings."""
     name = file_path.name.lower()
     suffix = file_path.suffix.lstrip(".").lower()
 
@@ -11,13 +12,19 @@ def classify_file(file_path: Path) -> str:
         if pattern in name:
             return "Skip"
 
-    # Heuristic: receipts / invoices
+    # Heuristic layer: fast, deterministic rules for known patterns
     if suffix == "pdf":
         if any(k in name for k in ["receipt", "invoice", "order", "purchase"]):
             return "Receipts"
 
-    # Default mapping
     if suffix in CATEGORY_MAP:
         return CATEGORY_MAP[suffix]
 
-    return "Miscellaneous"
+    # Embedding layer: local AI for ambiguous / unknown files
+    # Only if the model has been downloaded; otherwise fall through
+    try:
+        ai_category = embedding_classifier.classify_file(file_path)
+        return ai_category
+    except Exception:
+        # Model not downloaded yet or other failure — fall back to Miscellaneous
+        return "Miscellaneous"

@@ -2,6 +2,7 @@
 const { invoke } = window.__TAURI__.core;
 
 const statusBadge = document.getElementById('status-badge');
+const smartSortBadge = document.getElementById('smart-sort-badge');
 const btnStart = document.getElementById('btn-start');
 const btnStop = document.getElementById('btn-stop');
 const btnUndo = document.getElementById('btn-undo');
@@ -24,6 +25,21 @@ async function updateStatus() {
     }
   } catch (e) {
     console.error('Status error:', e);
+  }
+}
+
+async function updateSmartSortStatus() {
+  try {
+    const ready = await invoke('get_smart_sort_status');
+    if (ready) {
+      smartSortBadge.textContent = 'Smart Sort: Ready';
+      smartSortBadge.classList.add('ready');
+    } else {
+      smartSortBadge.textContent = 'Smart Sort: Offline';
+      smartSortBadge.classList.remove('ready');
+    }
+  } catch (e) {
+    console.error('Smart sort status error:', e);
   }
 }
 
@@ -112,8 +128,10 @@ btnRefresh.addEventListener('click', loadActions);
 setInterval(() => {
   updateStatus();
   loadActions();
+  updateSmartSortStatus();
 }, 3000);
 
 // Initial load
 updateStatus();
 loadActions();
+updateSmartSortStatus();

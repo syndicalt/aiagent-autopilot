@@ -91,6 +91,13 @@ async fn get_recent_actions(limit: i64) -> Result<Vec<Action>, String> {
 }
 
 #[tauri::command]
+async fn get_smart_sort_status() -> Result<bool, String> {
+    let home = dirs::home_dir().ok_or("no home")?;
+    let cache = home.join(".cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2");
+    Ok(cache.exists())
+}
+
+#[tauri::command]
 async fn undo_last() -> Result<String, String> {
     let proj = project_dir();
     let python = proj.join(".venv/bin/python");
@@ -120,7 +127,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AgentState { child: Mutex::new(None) })
         .invoke_handler(tauri::generate_handler![
-            start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last
+            start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last, get_smart_sort_status
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
