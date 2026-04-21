@@ -39,6 +39,12 @@ def _ensure_model():
         texts = list(CATEGORY_DESCRIPTIONS.values())
         _category_embeddings = _model.encode(texts, convert_to_numpy=True)
 
+def warm_up():
+    """Force immediate model download and load. Call this on agent start."""
+    print("[Smart Sort] Warming up embedding model...")
+    _ensure_model()
+    print("[Smart Sort] Ready.")
+
 def is_model_ready() -> bool:
     return _model is not None
 
