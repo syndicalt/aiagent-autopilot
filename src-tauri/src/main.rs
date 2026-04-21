@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::fs::File;
 use tokio::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
