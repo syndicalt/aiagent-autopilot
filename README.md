@@ -53,9 +53,42 @@ Drop a file into `~/Downloads`. Autopilot moves it to the right folder inside `~
 
 ---
 
+## Installation
+
+### Linux
+
+**`.deb` (recommended for Ubuntu/Debian):**
+
+```bash
+sudo dpkg -i Autopilot_0.1.0_amd64.deb
+```
+
+Autopilot appears in your applications menu and starts automatically in the system tray.
+
+**`.AppImage` (portable, works on most distros):**
+
+```bash
+chmod +x Autopilot_0.1.0_amd64.AppImage
+./Autopilot_0.1.0_amd64.AppImage
+```
+
+### macOS
+
+**`.dmg`:**
+
+1. Open the `.dmg`
+2. Drag **Autopilot** into **Applications**
+3. Launch from Launchpad or Finder
+
+> **First launch:** The app is ad-hoc signed. If Gatekeeper blocks it, right-click the app → **Open** → confirm.
+
+---
+
 ## Quick Start
 
-### Python agent (headless)
+### Run from source (developers)
+
+**Python agent (headless):**
 
 ```bash
 cd ~/Projects/Personal/aiagent-autopilot
@@ -65,20 +98,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### GUI (Tauri v2)
+**GUI dev mode (hot reload):**
 
 ```bash
 cd src-tauri
 cargo tauri dev
 ```
 
-### Build release packages
+**Build release packages:**
 
 ```bash
 make build
 ```
 
-See [BUILD.md](BUILD.md) for detailed platform-specific instructions.
+See [BUILD.md](BUILD.md) for detailed platform-specific build instructions.
 
 ---
 
