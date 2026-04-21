@@ -40,8 +40,17 @@
       <button id="btn-undo" class="btn secondary" disabled>Undo Last</button>
     </section>
 
+    <section class="logs" id="logs-section" style="display:none;">
+      <div class="actions-header">
+        <h2>Agent Logs</h2>
+        <button id="btn-hide-logs" class="btn ghost">Hide</button>
+      </div>
+      <pre id="log-output" class="log-output"></pre>
+    </section>
+
     <footer>
       <p>Runs in the background. Click the tray icon to hide/show.</p>
+      <button id="btn-logs" class="btn ghost" style="margin-top:8px;">View Logs</button>
     </footer>
   </div>
 

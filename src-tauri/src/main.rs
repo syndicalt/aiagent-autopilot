@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::fs::File;
 use tokio::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
@@ -8,6 +9,10 @@ use serde::Serialize;
 
 struct AgentState {
     child: Mutex<Option<tokio::process::Child>>,
+}
+
+fn log_path() -> PathBuf {
+    dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.agent.log")
 }
 
 #[derive(Serialize)]
@@ -50,15 +55,37 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
     let proj = project_dir();
     let python = proj.join(".venv/bin/python");
     let script = proj.join("main.py");
+
+    // Ensure log dir exists
+    let log = log_path();
+    if let Some(parent) = log.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let stderr_file = File::create(&log)
+        .map_err(|e| format!("Failed to create log file: {e}"))?;
+
     let child = tokio::process::Command::new(&python)
         .arg(&script)
         .current_dir(&proj)
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stderr(stderr_file)
         .spawn()
         .map_err(|e| format!("Failed to start agent: {e}"))?;
     *child_guard = Some(child);
     Ok("Agent started".into())
+}
+
+#[tauri::command]
+async fn get_agent_logs() -> Result<String, String> {
+    let log = log_path();
+    if !log.exists() {
+        return Ok("No logs yet.".into());
+    }
+    let content = std::fs::read_to_string(&log).unwrap_or_default();
+    // Return last 50 lines
+    let lines: Vec<&str> = content.lines().collect();
+    let start = lines.len().saturating_sub(50);
+    Ok(lines[start..].join("\n"))
 }
 
 #[tauri::command]
@@ -169,7 +196,7 @@ pub fn run() {
         .manage(AgentState { child: Mutex::new(None) })
         .invoke_handler(tauri::generate_handler![
             start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last, get_smart_sort_status,
-            toggle_notifications, get_notifications_muted
+            toggle_notifications, get_notifications_muted, get_agent_logs
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {

@@ -8,6 +8,10 @@ const btnStop = document.getElementById('btn-stop');
 const btnUndo = document.getElementById('btn-undo');
 const btnRefresh = document.getElementById('btn-refresh');
 const btnMute = document.getElementById('btn-mute');
+const btnLogs = document.getElementById('btn-logs');
+const btnHideLogs = document.getElementById('btn-hide-logs');
+const logsSection = document.getElementById('logs-section');
+const logOutput = document.getElementById('log-output');
 const actionList = document.getElementById('action-list');
 
 async function updateStatus() {
@@ -149,6 +153,20 @@ setInterval(() => {
   loadActions();
   updateSmartSortStatus();
 }, 3000);
+
+btnLogs.addEventListener('click', async () => {
+  try {
+    const logs = await invoke('get_agent_logs');
+    logOutput.textContent = logs;
+    logsSection.style.display = 'block';
+  } catch (e) {
+    console.error('Logs error:', e);
+  }
+});
+
+btnHideLogs.addEventListener('click', () => {
+  logsSection.style.display = 'none';
+});
 
 // Initial load
 updateStatus();
