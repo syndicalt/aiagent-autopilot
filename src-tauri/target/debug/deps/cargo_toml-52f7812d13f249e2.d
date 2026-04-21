@@ -1,0 +1,10 @@
+/home/cheapseatsecon/Projects/Personal/aiagent-autopilot/src-tauri/target/debug/deps/cargo_toml-52f7812d13f249e2.d: /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/cargo_toml.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/afs.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/error.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/inheritable.rs
+
+/home/cheapseatsecon/Projects/Personal/aiagent-autopilot/src-tauri/target/debug/deps/libcargo_toml-52f7812d13f249e2.rlib: /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/cargo_toml.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/afs.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/error.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/inheritable.rs
+
+/home/cheapseatsecon/Projects/Personal/aiagent-autopilot/src-tauri/target/debug/deps/libcargo_toml-52f7812d13f249e2.rmeta: /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/cargo_toml.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/afs.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/error.rs /home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/inheritable.rs
+
+/home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/cargo_toml.rs:
+/home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/afs.rs:
+/home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/error.rs:
+/home/cheapseatsecon/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.22.3/src/inheritable.rs:

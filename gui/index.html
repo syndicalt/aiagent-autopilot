@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autopilot</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="status-badge" id="status-badge">Stopped</div>
+      <h1>Autopilot</h1>
+      <p class="subtitle">Your Downloads agent</p>
+    </header>
+
+    <section class="controls">
+      <button id="btn-start" class="btn primary">Start Agent</button>
+      <button id="btn-stop" class="btn danger" disabled>Stop Agent</button>
+    </section>
+
+    <section class="actions">
+      <div class="actions-header">
+        <h2>Recent Actions</h2>
+        <button id="btn-refresh" class="btn ghost">Refresh</button>
+      </div>
+      <ul id="action-list" class="action-list">
+        <li class="empty">No actions yet.</li>
+      </ul>
+      <button id="btn-undo" class="btn secondary" disabled>Undo Last</button>
+    </section>
+
+    <footer>
+      <p>Runs in the background. Click the tray icon to hide/show.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

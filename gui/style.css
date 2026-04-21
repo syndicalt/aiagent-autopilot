@@ -1,0 +1,179 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #334155;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.status-badge.running {
+  background: #064e3b;
+  color: #34d399;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn.secondary {
+  background: #334155;
+  color: #e2e8f0;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.btn.ghost {
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 500;
+  padding: 4px 8px;
+  flex: 0 0 auto;
+}
+
+.actions {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.actions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.actions-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.action-list {
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.action-list li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.action-list li:last-child {
+  margin-bottom: 0;
+}
+
+.action-list li.empty {
+  background: transparent;
+  color: #64748b;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.action-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.action-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.action-detail {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.action-cat {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #3b82f6;
+  background: rgba(59,130,246,0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+footer {
+  text-align: center;
+  margin-top: 20px;
+  color: #475569;
+  font-size: 12px;
+}
