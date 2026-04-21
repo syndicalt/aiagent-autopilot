@@ -16,5 +16,3 @@ def notify(title: str, message: str):
             print(f"[{title}] {message}")
     except Exception:
         print(f"[{title}] {message}")
-    except Exception:
-        print(f"[{title}] {message}")

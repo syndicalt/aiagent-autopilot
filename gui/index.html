@@ -20,17 +20,31 @@
     <section class="controls">
       <button id="btn-start" class="btn primary">Start Agent</button>
       <button id="btn-stop" class="btn danger" disabled>Stop Agent</button>
+      <label class="switch-label" id="mute-switch-label">
+        <input type="checkbox" id="mute-switch">
+        <span class="switch-slider"></span>
+        <span class="switch-text">Mute</span>
+      </label>
     </section>
 
-    <section class="settings">
-      <div class="setting-row">
-        <span class="setting-label">Notifications</span>
-        <button id="btn-mute" class="btn ghost">Mute</button>
+    <section class="card rules" id="rules-section">
+      <div class="card-header">
+        <h2>Sort Rules</h2>
+        <button id="btn-add-rule" class="btn ghost">+ Add Rule</button>
       </div>
+      <div id="rules-list" class="rules-list"></div>
+
+      <div class="rule-test-row">
+        <input type="text" id="test-filename" class="test-input" placeholder="Test filename (e.g. invoice_2024.pdf)" />
+        <button id="btn-test-rules" class="btn ghost">Test</button>
+      </div>
+      <div id="test-results" class="test-results"></div>
+
+      <button id="btn-save-rules" class="btn primary" style="width:100%; margin-top:16px;">Save Rules</button>
     </section>
 
-    <section class="actions">
-      <div class="actions-header">
+    <section class="card actions">
+      <div class="card-header">
         <h2>Recent Actions</h2>
         <button id="btn-refresh" class="btn ghost">Refresh</button>
       </div>
@@ -40,8 +54,8 @@
       <button id="btn-undo" class="btn secondary" disabled>Undo Last</button>
     </section>
 
-    <section class="logs" id="logs-section" style="display:none;">
-      <div class="actions-header">
+    <section class="card logs" id="logs-section" style="display:none;">
+      <div class="card-header">
         <h2>Agent Logs</h2>
         <button id="btn-hide-logs" class="btn ghost">Hide</button>
       </div>
@@ -49,8 +63,8 @@
     </section>
 
     <footer>
-      <p>Runs in the background. Click the tray icon to hide/show.</p>
-      <button id="btn-logs" class="btn ghost" style="margin-top:8px;">View Logs</button>
+      <p>Runs in the background. Click the tray icon to hide or show.</p>
+      <button id="btn-logs" class="btn ghost">View Logs</button>
     </footer>
   </div>
 

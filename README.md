@@ -1,41 +1,61 @@
-# AI Agent Autopilot
+# Autopilot
 
-A minimal Python prototype for an ambient file-organizing agent — now with a **Tauri menu-bar GUI**.
+An **ambient file-organizing agent** with a Tauri menu-bar GUI. Watches `~/Downloads`, automatically sorts files using a hybrid heuristic + local AI classifier, and provides a visual command center with live action feed, visual rules engine, and one-click undo.
+
+> Built for the a16z "GUIs for Agents" thesis. Local-first, privacy-first, zero marginal cost.
+
+![Status](https://img.shields.io/badge/status-alpha-blue)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
 
 ## What it does
 
-Watches your `~/Downloads` folder and automatically moves new files into categorized subfolders inside `~/Downloads/Autopilot`.
+Drop a file into `~/Downloads`. Autopilot moves it to the right folder inside `~/Downloads/Autopilot` within seconds.
 
-- **Images** → `Autopilot/Images`
-- **PDFs** → `Autopilot/Documents` (or `Autopilot/Receipts` if the filename looks like a receipt/invoice)
-- **Audio/Video** → `Autopilot/Audio`, `Autopilot/Video`
-- **Archives** → `Autopilot/Archives`
-- **Code** → `Autopilot/Code`
-- **Installers** → `Autopilot/Installers`
-- Everything else → `Autopilot/Miscellaneous`
+**Default categories:**
+- **Images** → `Autopilot/Images` (jpg, png, gif, webp, svg)
+- **Documents** → `Autopilot/Documents` (pdf, docx, txt, csv, xlsx, pptx)
+- **Receipts** → `Autopilot/Receipts` (PDFs with "invoice", "receipt", "order" in the name)
+- **Audio** → `Autopilot/Audio` (mp3, wav, flac, ogg)
+- **Video** → `Autopilot/Video` (mp4, mov, mkv, avi)
+- **Archives** → `Autopilot/Archives` (zip, tar, gz, 7z, rar)
+- **Code** → `Autopilot/Code` (py, js, ts, rs, go, java, cpp)
+- **Installers** → `Autopilot/Installers` (dmg, pkg, deb, rpm, AppImage)
+- **Miscellaneous** → `Autopilot/Miscellaneous` (everything else)
 
-## Project structure
+### Sorting pipeline (priority order)
 
-```
-aiagent-autopilot/
-├── main.py              # Python agent engine (file watcher)
-├── undo.py              # CLI undo tool
-├── classifier.py        # Heuristic file classifier
-├── organizer.py         # File mover + SQLite logger
-├── notifier.py          # Cross-platform desktop notifications
-├── config.py            # Rules & mappings
-├── requirements.txt     # Python deps
-├── gui/                 # Tauri frontend (HTML/CSS/JS)
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-└── src-tauri/           # Tauri Rust backend
-    ├── Cargo.toml
-    ├── tauri.conf.json
-    └── src/main.rs
-```
+1. **User-defined rules** — Visual rule builder in the GUI. Highest priority.
+2. **Heuristics** — Fast extension + filename keyword matching.
+3. **Local AI embeddings** — `all-MiniLM-L6-v2` model for ambiguous files. Downloads once (~80MB), runs entirely offline.
 
-## Run the Python agent (headless)
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Ambient** | Runs in the system tray. No chat window needed. |
+| **Local AI** | Embedding classifier using `sentence-transformers`. No API keys. |
+| **Visual Rules Engine** | Build custom sort rules from the GUI — no code required. |
+| **Live Action Feed** | See every file move in real time with timestamps. |
+| **One-Click Undo** | Full SQLite audit trail. Revert any move from the GUI or CLI. |
+| **Notification Mute** | Toggle desktop notifications from the tray or GUI. |
+| **Cross-Platform** | Native `.deb`, `.AppImage` (Linux) and `.dmg`, `.app` (macOS). |
+
+---
+
+## Screenshots
+
+*(Add screenshots of the GUI here)*
+
+---
+
+## Quick Start
+
+### Python agent (headless)
 
 ```bash
 cd ~/Projects/Personal/aiagent-autopilot
@@ -45,74 +65,123 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## Undo (CLI)
-
-Every move is reversible. Use the undo CLI to inspect the log and restore files:
+### GUI (Tauri v2)
 
 ```bash
-# Show recent actions
-python undo.py --list
-
-# Undo the last move
-python undo.py
-
-# Undo the last 5 moves
-python undo.py --last 5
-
-# Preview what would be undone without touching anything
-python undo.py --last 3 --dry-run
-```
-
-## Build & run the menu-bar GUI
-
-The GUI is a **Tauri v2** app (Rust backend + web frontend) that lives in your system tray.
-
-### Prerequisites
-
-**macOS:** Nothing extra needed.  
-**Windows:** Nothing extra needed.  
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-```
-
-### Build & run
-
-```bash
-cd ~/Projects/Personal/aiagent-autopilot/src-tauri
-
-# Install Rust (if you haven't)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install Tauri CLI
-cargo install tauri-cli --version "^2.0"
-
-# Run in dev mode
+cd src-tauri
 cargo tauri dev
-
-# Or build a release binary
-cargo tauri build
 ```
 
-### What the GUI gives you
+### Build release packages
 
-- **System tray icon** — Click to show/hide the control window.
-- **Start/Stop** — Toggle the Python agent without touching the terminal.
-- **Live action feed** — See every file move as it happens.
-- **One-click Undo** — Revert the last move from the GUI, no terminal needed.
+```bash
+make build
+```
 
-## Features
+See [BUILD.md](BUILD.md) for detailed platform-specific instructions.
 
-- **Ambient:** Runs in the background. No chat window needed.
-- **Trust-first:** Every move is logged to a local SQLite database (`~/Downloads/Autopilot/.autopilot.db`).
-- **Safe:** Skips partial downloads (`.crdownload`, `.part`, etc.) and handles filename collisions.
-- **Visual feedback:** Desktop notifications confirm each action.
-- **Undo:** Full audit trail with one-command (or one-click) revert.
-- **Menu-bar GUI:** Native-feeling tray app built with Tauri.
+---
 
-## Next steps
+## Project Structure
 
-- Expand to other high-frequency folders (Desktop, Documents, Screenshots).
-- Add LLM-based classification for ambiguous files.
-- Package the GUI as a signed `.app` (macOS) or `.deb` / `.AppImage` (Linux) for distribution.
+```
+aiagent-autopilot/
+├── main.py                    # Agent entry point (watchdog + dedup)
+├── classifier.py              # Three-tier classifier (rules → heuristics → AI)
+├── rules_engine.py            # User-defined sort rules engine
+├── embedding_classifier.py    # Local AI model (all-MiniLM-L6-v2)
+├── organizer.py               # File mover + SQLite action logger
+├── notifier.py                # Cross-platform desktop notifications
+├── settings.py                # JSON settings persistence
+├── undo.py                    # CLI undo tool
+├── config.py                  # Paths, extension → category mappings
+├── requirements.txt           # Python dependencies
+├── gui/                       # Tauri frontend
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── src-tauri/                 # Tauri Rust backend
+│   ├── src/main.rs            # Commands, tray setup, process mgmt
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── BUILD.md                   # Build instructions
+├── Makefile                   # make build / make dev / make clean
+└── README.md
+```
+
+---
+
+## Undo
+
+Every move is logged to `~/Downloads/Autopilot/.autopilot.db` and is reversible.
+
+**CLI:**
+```bash
+python undo.py --list          # Show recent actions
+python undo.py                 # Undo last move
+python undo.py --last 5        # Undo last 5 moves
+python undo.py --dry-run       # Preview without touching files
+```
+
+**GUI:** Click **Undo Last** in the Recent Actions panel.
+
+---
+
+## Rules Engine
+
+Build custom sort rules from the GUI without writing code.
+
+A rule consists of:
+- **Name** — For your reference
+- **Conditions** — All must match (AND logic). Fields: `filename`, `extension`, `path`, `mime_type`, `size`. Operators: `equals`, `contains`, `starts_with`, `ends_with`, `matches_regex`, `greater_than`, `less_than`.
+- **Action** — `Move to <category>` or `Skip`
+
+Rules are evaluated in order. The first matching rule wins.
+
+**Test before saving:** Enter a filename in the test field and click **Test** to see which rules match.
+
+---
+
+## Smart Sort (Local AI)
+
+The embedding classifier downloads `all-MiniLM-L6-v2` (~80MB) on first run. It classifies ambiguous files by comparing their filename embeddings against pre-computed category embeddings. Completely offline — no API calls, no keys.
+
+Status badge in the GUI shows:
+- **"Setting up..."** — Model not yet downloaded
+- **"Local"** — Model ready, running offline
+
+---
+
+## Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Tauri v2** over Electron | Smaller bundle, native tray, Rust safety |
+| **Local embeddings** over cloud LLM | Zero marginal cost, zero latency, privacy |
+| **SQLite audit log** | Simple, portable, reversible |
+| **Rules as JSON** | Human-readable, easy to back up or version |
+| **Hardcoded project path** | Dev convenience; will bundle Python for distribution |
+
+---
+
+## Known Limitations
+
+- **Python path dependency:** The bundled app currently expects the repo at `~/Projects/Personal/aiagent-autopilot` with a working `.venv`. Standalone Python embedding is planned.
+- **Single watch folder:** Only `~/Downloads` is watched. Desktop/Documents expansion is on the roadmap.
+- **macOS signing:** Bundles are ad-hoc signed. Gatekeeper will warn on first launch — right-click → Open to allow.
+
+---
+
+## Roadmap
+
+- [ ] Bundle Python interpreter as a Tauri resource (fully standalone)
+- [ ] Watch `~/Desktop` and `~/Documents`
+- [ ] Drag-and-drop rule creation from Recent Actions
+- [ ] Windows support (`.msi`)
+- [ ] Cloud LLM fallback tier for truly ambiguous files (optional, opt-in)
+
+---
+
+## License
+
+MIT

@@ -1,3 +1,8 @@
+//! Autopilot Tauri v2 backend.
+//!
+//! Manages the Python agent lifecycle, exposes commands to the web frontend,
+//! and sets up the system tray with close-to-tray behavior.
+
 use std::path::PathBuf;
 use tokio::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
@@ -6,18 +11,22 @@ use tauri::Manager;
 use tauri::WindowEvent;
 use serde::Serialize;
 
+/// Shared application state: the spawned Python agent child process.
 struct AgentState {
     child: Mutex<Option<tokio::process::Child>>,
 }
 
+/// Path to the agent's stderr log file.
 fn log_path() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.agent.log")
 }
 
+/// Path to the PID file used for cross-instance agent detection.
 fn pid_path() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.agent.pid")
 }
 
+/// Check whether a process with the given PID is still alive.
 fn is_pid_alive(pid: u32) -> bool {
     std::process::Command::new("kill")
         .arg("-0")
@@ -27,6 +36,7 @@ fn is_pid_alive(pid: u32) -> bool {
         .unwrap_or(false)
 }
 
+/// Read the agent PID from the PID file, if it exists.
 fn read_agent_pid() -> Option<u32> {
     let path = pid_path();
     if !path.exists() {
@@ -35,6 +45,7 @@ fn read_agent_pid() -> Option<u32> {
     std::fs::read_to_string(&path).ok()?.trim().parse().ok()
 }
 
+/// Write the agent PID to the PID file.
 fn write_agent_pid(pid: u32) {
     let path = pid_path();
     if let Some(parent) = path.parent() {
@@ -43,6 +54,7 @@ fn write_agent_pid(pid: u32) {
     let _ = std::fs::write(&path, pid.to_string());
 }
 
+/// Remove the PID file.
 fn clear_agent_pid() {
     let _ = std::fs::remove_file(pid_path());
 }
@@ -149,13 +161,26 @@ async fn stop_agent(state: tauri::State<'_, AgentState>) -> Result<String, Strin
 
 #[tauri::command]
 async fn get_agent_status(state: tauri::State<'_, AgentState>) -> Result<bool, String> {
-    let child_guard = state.child.lock().await;
-    if child_guard.is_some() {
-        return Ok(true);
+    let mut child_guard = state.child.lock().await;
+    if let Some(ref mut child) = *child_guard {
+        // Verify the process is actually alive, not just a stale handle
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                // Process has exited; clean up stale handle
+                *child_guard = None;
+                clear_agent_pid();
+                return Ok(false);
+            }
+            Ok(None) => return Ok(true), // Still running
+            Err(_) => return Ok(true),   // Can't determine; assume running
+        }
     }
-    // Also check PID file in case GUI restarted while agent kept running
+    // Fallback to PID file for cross-instance detection
     if let Some(pid) = read_agent_pid() {
-        return Ok(is_pid_alive(pid));
+        if is_pid_alive(pid) {
+            return Ok(true);
+        }
+        clear_agent_pid();
     }
     Ok(false)
 }
@@ -243,6 +268,55 @@ async fn undo_last() -> Result<String, String> {
     Ok(stdout.to_string())
 }
 
+fn rules_path() -> PathBuf {
+    dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.rules.json")
+}
+
+#[tauri::command]
+async fn get_rules() -> Result<serde_json::Value, String> {
+    let path = rules_path();
+    if !path.exists() {
+        return Ok(serde_json::json!([]));
+    }
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let rules: serde_json::Value = serde_json::from_str(&content).unwrap_or_else(|_| serde_json::json!([]));
+    Ok(rules)
+}
+
+#[tauri::command]
+async fn save_rules(rules: serde_json::Value) -> Result<(), String> {
+    let path = rules_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let content = serde_json::to_string_pretty(&rules).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn test_rules(file_name: String, rules: serde_json::Value) -> Result<Vec<bool>, String> {
+    let proj = project_dir();
+    let python = proj.join(".venv/bin/python");
+    let script = proj.join("rules_engine.py");
+    let rules_json = serde_json::to_string(&rules).map_err(|e| e.to_string())?;
+    let output = tokio::process::Command::new(&python)
+        .arg(&script)
+        .arg("--test-each")
+        .arg(&rules_json)
+        .arg(&file_name)
+        .current_dir(&proj)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to test rules: {e}"))?;
+    if !output.status.success() {
+        return Err(format!("Test failed: {}", String::from_utf8_lossy(&output.stderr)));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let results: Vec<bool> = serde_json::from_str(stdout.trim()).map_err(|e| format!("Invalid test output: {e}"))?;
+    Ok(results)
+}
+
 fn blue_icon() -> tauri::image::Image<'static> {
     let rgba = vec![59u8, 130, 246, 255].repeat(32 * 32);
     tauri::image::Image::new_owned(rgba, 32, 32)
@@ -253,7 +327,7 @@ pub fn run() {
         .manage(AgentState { child: Mutex::new(None) })
         .invoke_handler(tauri::generate_handler![
             start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last, get_smart_sort_status,
-            toggle_notifications, get_notifications_muted, get_agent_logs
+            toggle_notifications, get_notifications_muted, get_agent_logs, get_rules, save_rules, test_rules
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -288,22 +362,38 @@ pub fn run() {
                             let proj = project_dir();
                             let python = proj.join(".venv/bin/python");
                             let script = proj.join("settings.py");
-                            let _ = std::process::Command::new(&python)
+                            match std::process::Command::new(&python)
                                 .arg(&script)
                                 .arg("--toggle")
                                 .current_dir(&proj)
-                                .output();
-
-                            // Refresh tray menu label
-                            let muted = read_notifications_muted();
-                            let mute_label = if muted { "Unmute Notifications" } else { "Mute Notifications" };
-                            let new_mute_i = MenuItem::with_id(app, "mute", mute_label, true, None::<&str>);
-                            let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>);
-                            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>);
-                            if let (Ok(new_mute_i), Ok(open_i), Ok(quit_i)) = (new_mute_i, open_i, quit_i) {
-                                if let Ok(new_menu) = Menu::with_items(app, &[&open_i, &new_mute_i, &quit_i]) {
+                                .output()
+                            {
+                                Ok(output) => {
+                                    if output.status.success() {
+                                        let muted = read_notifications_muted();
+                                        let mute_label = if muted { "Unmute Notifications" } else { "Mute Notifications" };
+                                        let new_mute_i = MenuItem::with_id(app, "mute", mute_label, true, None::<&str>);
+                                        let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>);
+                                        let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>);
+                                        if let (Ok(new_mute_i), Ok(open_i), Ok(quit_i)) = (new_mute_i, open_i, quit_i) {
+                                            if let Ok(new_menu) = Menu::with_items(app, &[&open_i, &new_mute_i, &quit_i]) {
+                                                if let Some(tray) = app.tray_by_id("main") {
+                                                    let _ = tray.set_menu(Some(new_menu));
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        let stderr = String::from_utf8_lossy(&output.stderr);
+                                        eprintln!("Mute toggle failed: {}", stderr);
+                                        if let Some(tray) = app.tray_by_id("main") {
+                                            let _ = tray.set_tooltip(Some(&format!("Toggle failed: {}", stderr)));
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("Failed to run mute toggle: {}", e);
                                     if let Some(tray) = app.tray_by_id("main") {
-                                        let _ = tray.set_menu(Some(new_menu));
+                                        let _ = tray.set_tooltip(Some(&format!("Toggle error: {}", e)));
                                     }
                                 }
                             }

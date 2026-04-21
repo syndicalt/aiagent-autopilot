@@ -1,8 +1,16 @@
+"""
+Simple JSON settings persistence for Autopilot.
+
+Currently stores only the notification mute state in
+~/Downloads/Autopilot/.settings.json.
+"""
+
 import json
 from pathlib import Path
 from config import ORGANIZED_ROOT
 
 SETTINGS_PATH = ORGANIZED_ROOT / ".settings.json"
+
 
 def _ensure_settings():
     if not SETTINGS_PATH.exists():
