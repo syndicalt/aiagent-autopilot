@@ -16,6 +16,11 @@ Packages are written to `src-tauri/target/release/bundle/`.
 ### All Platforms
 - [Rust](https://rustup.rs/) (1.77+)
 - Tauri CLI: `cargo install tauri-cli --version "^2.0"`
+- Python 3.10+ with PyInstaller:
+  ```bash
+  pip install pyinstaller
+  ```
+  > PyInstaller is used to freeze the agent into a standalone binary bundled with the app.
 
 ### Linux (Ubuntu/Debian)
 ```bash
@@ -64,27 +69,41 @@ cargo tauri dev
 
 Hot-reloads the frontend and restarts the Rust backend on change.
 
+In dev mode, the Rust backend spawns the agent directly from your local repo's Python virtualenv (`.venv/bin/python`). No PyInstaller build is required.
+
 ---
 
-## Cross-Platform Notes
+## How Standalone Bundling Works
 
-Autopilot currently reads the Python agent from a hardcoded path:
-- **Linux/macOS:** `~/Projects/Personal/aiagent-autopilot/.venv/bin/python`
-- **Windows:** `C:\Users\<you>\Projects\Personal\aiagent-autopilot\.venv\Scripts\python.exe`
+During `cargo tauri build`, Tauri runs `scripts/build-agent.py` **before** compiling the Rust backend. This script:
 
-For the bundle to work, you must:
-1. Have the repo cloned at that path
-2. Have the Python virtualenv created and dependencies installed:
-   ```bash
-   # Linux/macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
+1. Runs PyInstaller on `agent.spec` to freeze the Python agent + all dependencies into a single binary (`autopilot-agent`)
+2. Copies the binary into `src-tauri/resources/`
+3. Tauri bundles the binary as a resource in the final package
 
-   # Windows
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+At runtime, the Rust backend looks for the bundled sidecar next to the executable. If found, it spawns the sidecar directly. If not found (dev mode), it falls back to the system Python interpreter.
 
-Future releases will bundle Python as a resource for fully standalone distribution.
+**Result:** Users install the `.deb`/`.msi`/`.dmg` and it just works — no repo clone, no venv, no `pip install`.
+
+---
+
+## Build Size
+
+The standalone agent binary includes the full Python runtime + torch + sentence-transformers + all dependencies. Expect:
+
+- Agent binary alone: **400–600 MB**
+- Full Tauri bundle (app + agent): **500–700 MB**
+
+The size is dominated by PyTorch. Future work may explore ONNX Runtime or quantization to shrink this.
+
+---
+
+## Manual Agent Build (optional)
+
+If you want to build the agent binary separately:
+
+```bash
+python3 scripts/build-agent.py
+```
+
+Output: `src-tauri/resources/autopilot-agent`

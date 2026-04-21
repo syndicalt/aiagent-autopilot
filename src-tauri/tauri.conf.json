@@ -5,7 +5,7 @@
   "identifier": "com.autopilot.app",
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "",
+    "beforeBuildCommand": "cd .. && python3 scripts/build-agent.py",
     "frontendDist": "../gui"
   },
   "app": {
@@ -47,10 +47,13 @@
       "minimumSystemVersion": "10.13",
       "signingIdentity": null
     },
+    "resources": {
+      "resources/autopilot-agent": "autopilot-agent",
+      "resources/autopilot-agent.exe": "autopilot-agent.exe"
+    },
     "linux": {
       "deb": {
         "depends": [
-          "python3",
           "libnotify-bin"
         ]
       }

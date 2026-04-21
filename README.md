@@ -209,7 +209,7 @@ Status badge in the GUI shows:
 
 ## Known Limitations
 
-- **Python path dependency:** The bundled app currently expects the repo at `~/Projects/Personal/aiagent-autopilot` with a working `.venv`. Standalone Python embedding is planned.
+- **Build size:** The standalone bundle includes the full Python runtime + PyTorch (~500–700 MB). This is a known trade-off for zero-setup installation.
 - **Single watch folder:** Only `~/Downloads` is watched. Desktop/Documents expansion is on the roadmap.
 - **macOS signing:** Bundles are ad-hoc signed. Gatekeeper will warn on first launch — right-click → Open to allow.
 - **Windows signing:** `.msi` is unsigned. SmartScreen will warn on first launch — click **More info** → **Run anyway**.
@@ -218,7 +218,7 @@ Status badge in the GUI shows:
 
 ## Roadmap
 
-- [ ] Bundle Python interpreter as a Tauri resource (fully standalone)
+- [x] Bundle Python interpreter as a Tauri resource (fully standalone)
 - [ ] Watch `~/Desktop` and `~/Documents`
 - [ ] Drag-and-drop rule creation from Recent Actions
 - [x] Windows support (`.msi`)

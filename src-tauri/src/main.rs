@@ -74,6 +74,59 @@ fn clear_agent_pid() {
     let _ = std::fs::remove_file(pid_path());
 }
 
+/// Locate the bundled autopilot-agent sidecar binary, if it exists.
+/// Searches next to the current executable and in platform-specific
+/// resource directories (e.g. macOS app bundle Resources/).
+fn agent_binary_path() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+
+    for name in &["autopilot-agent", "autopilot-agent.exe"] {
+        let candidate = dir.join(name);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    // macOS app bundle: Resources is sibling to MacOS
+    #[cfg(target_os = "macos")]
+    {
+        let candidate = dir.parent()?.join("Resources").join("autopilot-agent");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
+/// Resolve the command and arguments for running an agent subcommand.
+/// Returns (binary_path, args, optional_cwd).
+///
+/// In release/bundled mode, uses the frozen sidecar binary.
+/// In dev mode, falls back to the system Python interpreter.
+fn resolve_agent_command(subcommand: Option<&str>, extra_args: Vec<String>) -> (PathBuf, Vec<String>, Option<PathBuf>) {
+    if let Some(agent_bin) = agent_binary_path() {
+        let mut args = Vec::new();
+        if let Some(cmd) = subcommand {
+            args.push(cmd.to_string());
+        }
+        args.extend(extra_args);
+        (agent_bin, args, None)
+    } else {
+        // Dev mode fallback: spawn from the local repo venv
+        let proj = project_dir();
+        let python = python_exe(&proj);
+        let script = match subcommand {
+            Some(cmd) => proj.join(format!("{}.py", cmd)),
+            None => proj.join("main.py"),
+        };
+        let mut args = vec![script.to_string_lossy().to_string()];
+        args.extend(extra_args);
+        (python, args, Some(proj))
+    }
+}
+
 #[derive(Serialize)]
 struct Action {
     id: i64,
@@ -131,9 +184,8 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
         clear_agent_pid();
     }
 
-    let proj = project_dir();
-    let python = python_exe(&proj);
-    let script = proj.join("main.py");
+    // Resolve command: bundled sidecar in release, system Python in dev
+    let (cmd, args, cwd) = resolve_agent_command(None, vec![]);
 
     // Ensure log dir exists
     let log = log_path();
@@ -146,13 +198,13 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
         .open(&log)
         .map_err(|e| format!("Failed to open log file: {e}"))?;
 
-    let child = tokio::process::Command::new(&python)
-        .arg(&script)
-        .current_dir(&proj)
-        .stdout(std::process::Stdio::null())
-        .stderr(stderr_file)
-        .spawn()
-        .map_err(|e| format!("Failed to start agent: {e}"))?;
+    let mut command = tokio::process::Command::new(&cmd);
+    command.args(&args).stdout(std::process::Stdio::null()).stderr(stderr_file);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
+
+    let child = command.spawn().map_err(|e| format!("Failed to start agent: {e}"))?;
 
     if let Some(id) = child.id() {
         write_agent_pid(id);
@@ -248,14 +300,13 @@ async fn get_smart_sort_status() -> Result<bool, String> {
 
 #[tauri::command]
 async fn toggle_notifications() -> Result<bool, String> {
-    let proj = project_dir();
-    let python = python_exe(&proj);
-    let script = proj.join("settings.py");
-    let output = tokio::process::Command::new(&python)
-        .arg(&script)
-        .arg("--toggle")
-        .current_dir(&proj)
-        .output()
+    let (cmd, args, cwd) = resolve_agent_command(Some("settings"), vec!["--toggle".into()]);
+    let mut command = tokio::process::Command::new(&cmd);
+    command.args(&args);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
+    let output = command.output()
         .await
         .map_err(|e| format!("Failed to toggle notifications: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -275,16 +326,16 @@ async fn get_notifications_muted() -> Result<bool, String> {
 
 #[tauri::command]
 async fn undo_last() -> Result<String, String> {
-    let proj = project_dir();
-    let python = python_exe(&proj);
-    let script = proj.join("undo.py");
-    let output = tokio::process::Command::new(&python)
-        .arg(&script)
-        .arg("--last")
-        .arg("1")
-        .arg("--yes")
-        .current_dir(&proj)
-        .output()
+    let (cmd, args, cwd) = resolve_agent_command(
+        Some("undo"),
+        vec!["--last".into(), "1".into(), "--yes".into()],
+    );
+    let mut command = tokio::process::Command::new(&cmd);
+    command.args(&args);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
+    let output = command.output()
         .await
         .map_err(|e| format!("Failed to run undo: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -322,17 +373,17 @@ async fn save_rules(rules: serde_json::Value) -> Result<(), String> {
 
 #[tauri::command]
 async fn test_rules(file_name: String, rules: serde_json::Value) -> Result<Vec<bool>, String> {
-    let proj = project_dir();
-    let python = python_exe(&proj);
-    let script = proj.join("rules_engine.py");
     let rules_json = serde_json::to_string(&rules).map_err(|e| e.to_string())?;
-    let output = tokio::process::Command::new(&python)
-        .arg(&script)
-        .arg("--test-each")
-        .arg(&rules_json)
-        .arg(&file_name)
-        .current_dir(&proj)
-        .output()
+    let (cmd, args, cwd) = resolve_agent_command(
+        Some("rules"),
+        vec!["--test-each".into(), rules_json, file_name],
+    );
+    let mut command = tokio::process::Command::new(&cmd);
+    command.args(&args);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
+    let output = command.output()
         .await
         .map_err(|e| format!("Failed to test rules: {e}"))?;
     if !output.status.success() {
@@ -402,14 +453,13 @@ pub fn run() {
                             }
                         }
                         "mute" => {
-                            let proj = project_dir();
-                            let python = python_exe(&proj);
-                            let script = proj.join("settings.py");
-                            match std::process::Command::new(&python)
-                                .arg(&script)
-                                .arg("--toggle")
-                                .current_dir(&proj)
-                                .output()
+                            let (cmd, args, cwd) = resolve_agent_command(Some("settings"), vec!["--toggle".into()]);
+                            let mut command = std::process::Command::new(&cmd);
+                            command.args(&args);
+                            if let Some(dir) = cwd {
+                                command.current_dir(dir);
+                            }
+                            match command.output()
                             {
                                 Ok(output) => {
                                     if output.status.success() {
