@@ -188,6 +188,25 @@ h1 {
   border-radius: 999px;
 }
 
+.settings {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
 footer {
   text-align: center;
   margin-top: 20px;

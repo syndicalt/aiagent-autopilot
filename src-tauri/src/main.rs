@@ -27,6 +27,20 @@ fn db_path() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.autopilot.db")
 }
 
+fn settings_path() -> PathBuf {
+    dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.settings.json")
+}
+
+fn read_notifications_muted() -> bool {
+    let path = settings_path();
+    if !path.exists() {
+        return false;
+    }
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let json: serde_json::Value = serde_json::from_str(&content).unwrap_or_default();
+    json.get("notifications_muted").and_then(|v| v.as_bool()).unwrap_or(false)
+}
+
 #[tauri::command]
 async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, String> {
     let mut child_guard = state.child.lock().await;
@@ -98,6 +112,33 @@ async fn get_smart_sort_status() -> Result<bool, String> {
 }
 
 #[tauri::command]
+async fn toggle_notifications() -> Result<bool, String> {
+    let proj = project_dir();
+    let python = proj.join(".venv/bin/python");
+    let script = proj.join("settings.py");
+    let output = tokio::process::Command::new(&python)
+        .arg(&script)
+        .arg("--toggle")
+        .current_dir(&proj)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to toggle notifications: {e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        return Err(format!("Toggle failed: {stderr}"));
+    }
+    // Parse the boolean from stdout
+    let muted = stdout.trim() == "True";
+    Ok(muted)
+}
+
+#[tauri::command]
+async fn get_notifications_muted() -> Result<bool, String> {
+    Ok(read_notifications_muted())
+}
+
+#[tauri::command]
 async fn undo_last() -> Result<String, String> {
     let proj = project_dir();
     let python = proj.join(".venv/bin/python");
@@ -127,7 +168,8 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AgentState { child: Mutex::new(None) })
         .invoke_handler(tauri::generate_handler![
-            start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last, get_smart_sort_status
+            start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last, get_smart_sort_status,
+            toggle_notifications, get_notifications_muted
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -137,8 +179,11 @@ pub fn run() {
         })
         .setup(|app| {
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
+            let muted = read_notifications_muted();
+            let mute_label = if muted { "Unmute Notifications" } else { "Mute Notifications" };
+            let mute_i = MenuItem::with_id(app, "mute", mute_label, true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&open_i, &mute_i, &quit_i])?;
             
             let icon = blue_icon();
             
@@ -154,6 +199,16 @@ pub fn run() {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
+                        }
+                        "mute" => {
+                            let proj = project_dir();
+                            let python = proj.join(".venv/bin/python");
+                            let script = proj.join("settings.py");
+                            let _ = std::process::Command::new(&python)
+                                .arg(&script)
+                                .arg("--toggle")
+                                .current_dir(&proj)
+                                .output();
                         }
                         _ => {}
                     }

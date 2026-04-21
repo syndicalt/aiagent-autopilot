@@ -7,6 +7,7 @@ const btnStart = document.getElementById('btn-start');
 const btnStop = document.getElementById('btn-stop');
 const btnUndo = document.getElementById('btn-undo');
 const btnRefresh = document.getElementById('btn-refresh');
+const btnMute = document.getElementById('btn-mute');
 const actionList = document.getElementById('action-list');
 
 async function updateStatus() {
@@ -32,14 +33,23 @@ async function updateSmartSortStatus() {
   try {
     const ready = await invoke('get_smart_sort_status');
     if (ready) {
-      smartSortBadge.textContent = 'Smart Sort: Ready';
+      smartSortBadge.textContent = 'Smart Sort: Local';
       smartSortBadge.classList.add('ready');
     } else {
-      smartSortBadge.textContent = 'Smart Sort: Offline';
+      smartSortBadge.textContent = 'Smart Sort: Setting up...';
       smartSortBadge.classList.remove('ready');
     }
   } catch (e) {
     console.error('Smart sort status error:', e);
+  }
+}
+
+async function updateMuteStatus() {
+  try {
+    const muted = await invoke('get_notifications_muted');
+    btnMute.textContent = muted ? 'Unmute' : 'Mute';
+  } catch (e) {
+    console.error('Mute status error:', e);
   }
 }
 
@@ -124,6 +134,15 @@ btnUndo.addEventListener('click', async () => {
 
 btnRefresh.addEventListener('click', loadActions);
 
+btnMute.addEventListener('click', async () => {
+  try {
+    const muted = await invoke('toggle_notifications');
+    btnMute.textContent = muted ? 'Unmute' : 'Mute';
+  } catch (e) {
+    alert('Failed to toggle notifications: ' + e);
+  }
+});
+
 // Poll every 3 seconds
 setInterval(() => {
   updateStatus();
@@ -135,3 +154,4 @@ setInterval(() => {
 updateStatus();
 loadActions();
 updateSmartSortStatus();
+updateMuteStatus();

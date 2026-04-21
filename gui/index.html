@@ -11,7 +11,7 @@
     <header>
       <div class="status-row">
         <div class="status-badge" id="status-badge">Stopped</div>
-        <div class="status-badge smart-sort" id="smart-sort-badge">Smart Sort: Offline</div>
+        <div class="status-badge smart-sort" id="smart-sort-badge">Smart Sort: Setting up...</div>
       </div>
       <h1>Autopilot</h1>
       <p class="subtitle">Your Downloads agent</p>
@@ -20,6 +20,13 @@
     <section class="controls">
       <button id="btn-start" class="btn primary">Start Agent</button>
       <button id="btn-stop" class="btn danger" disabled>Stop Agent</button>
+    </section>
+
+    <section class="settings">
+      <div class="setting-row">
+        <span class="setting-label">Notifications</span>
+        <button id="btn-mute" class="btn ghost">Mute</button>
+      </div>
     </section>
 
     <section class="actions">
