@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use tokio::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 use tauri::WindowEvent;
 use serde::Serialize;
@@ -152,7 +152,7 @@ pub fn run() {
                     }
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::DoubleClick = event {
+                    if let TrayIconEvent::DoubleClick { .. } = event {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
