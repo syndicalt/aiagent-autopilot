@@ -135,6 +135,18 @@ header h1 {
   color: var(--text-primary);
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.app-icon {
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
 .subtitle {
   color: var(--text-muted);
   font-size: 13px;

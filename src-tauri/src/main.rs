@@ -27,6 +27,7 @@ fn pid_path() -> PathBuf {
 }
 
 /// Check whether a process with the given PID is still alive.
+#[cfg(unix)]
 fn is_pid_alive(pid: u32) -> bool {
     std::process::Command::new("kill")
         .arg("-0")
@@ -34,6 +35,20 @@ fn is_pid_alive(pid: u32) -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+#[cfg(windows)]
+fn is_pid_alive(pid: u32) -> bool {
+    match std::process::Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {}", pid), "/NH", "/FO", "CSV"])
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            stdout.contains(&pid.to_string())
+        }
+        Err(_) => false,
+    }
 }
 
 /// Read the agent PID from the PID file, if it exists.
@@ -72,6 +87,17 @@ fn project_dir() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Projects/Personal/aiagent-autopilot")
 }
 
+/// Path to the Python interpreter inside the project virtualenv.
+#[cfg(unix)]
+fn python_exe(proj: &PathBuf) -> PathBuf {
+    proj.join(".venv/bin/python")
+}
+
+#[cfg(windows)]
+fn python_exe(proj: &PathBuf) -> PathBuf {
+    proj.join(".venv/Scripts/python.exe")
+}
+
 fn db_path() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.autopilot.db")
 }
@@ -106,7 +132,7 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
     }
 
     let proj = project_dir();
-    let python = proj.join(".venv/bin/python");
+    let python = python_exe(&proj);
     let script = proj.join("main.py");
 
     // Ensure log dir exists
@@ -223,7 +249,7 @@ async fn get_smart_sort_status() -> Result<bool, String> {
 #[tauri::command]
 async fn toggle_notifications() -> Result<bool, String> {
     let proj = project_dir();
-    let python = proj.join(".venv/bin/python");
+    let python = python_exe(&proj);
     let script = proj.join("settings.py");
     let output = tokio::process::Command::new(&python)
         .arg(&script)
@@ -250,7 +276,7 @@ async fn get_notifications_muted() -> Result<bool, String> {
 #[tauri::command]
 async fn undo_last() -> Result<String, String> {
     let proj = project_dir();
-    let python = proj.join(".venv/bin/python");
+    let python = python_exe(&proj);
     let script = proj.join("undo.py");
     let output = tokio::process::Command::new(&python)
         .arg(&script)
@@ -297,7 +323,7 @@ async fn save_rules(rules: serde_json::Value) -> Result<(), String> {
 #[tauri::command]
 async fn test_rules(file_name: String, rules: serde_json::Value) -> Result<Vec<bool>, String> {
     let proj = project_dir();
-    let python = proj.join(".venv/bin/python");
+    let python = python_exe(&proj);
     let script = proj.join("rules_engine.py");
     let rules_json = serde_json::to_string(&rules).map_err(|e| e.to_string())?;
     let output = tokio::process::Command::new(&python)
@@ -317,9 +343,26 @@ async fn test_rules(file_name: String, rules: serde_json::Value) -> Result<Vec<b
     Ok(results)
 }
 
-fn blue_icon() -> tauri::image::Image<'static> {
-    let rgba = vec![59u8, 130, 246, 255].repeat(32 * 32);
-    tauri::image::Image::new_owned(rgba, 32, 32)
+fn app_icon() -> tauri::image::Image<'static> {
+    let bytes = include_bytes!("../icons/32x32.png");
+    let decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+    let mut reader = decoder.read_info().expect("valid png");
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).expect("decode png");
+    // Convert RGB/RGBA to RGBA if needed
+    let rgba = match info.color_type {
+        png::ColorType::Rgba => buf,
+        png::ColorType::Rgb => {
+            let mut rgba = Vec::with_capacity(buf.len() / 3 * 4);
+            for chunk in buf.chunks_exact(3) {
+                rgba.extend_from_slice(chunk);
+                rgba.push(255);
+            }
+            rgba
+        }
+        _ => panic!("unsupported png color type"),
+    };
+    tauri::image::Image::new_owned(rgba, info.width, info.height)
 }
 
 pub fn run() {
@@ -343,7 +386,7 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open_i, &mute_i, &quit_i])?;
             
-            let icon = blue_icon();
+            let icon = app_icon();
             
             let _tray = TrayIconBuilder::with_id("main")
                 .icon(icon)
@@ -360,7 +403,7 @@ pub fn run() {
                         }
                         "mute" => {
                             let proj = project_dir();
-                            let python = proj.join(".venv/bin/python");
+                            let python = python_exe(&proj);
                             let script = proj.join("settings.py");
                             match std::process::Command::new(&python)
                                 .arg(&script)

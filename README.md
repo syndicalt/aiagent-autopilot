@@ -5,7 +5,7 @@ An **ambient file-organizing agent** with a Tauri menu-bar GUI. Watches `~/Downl
 > Built for the a16z "GUIs for Agents" thesis. Local-first, privacy-first, zero marginal cost.
 
 ![Status](https://img.shields.io/badge/status-alpha-blue)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -43,7 +43,7 @@ Drop a file into `~/Downloads`. Autopilot moves it to the right folder inside `~
 | **Live Action Feed** | See every file move in real time with timestamps. |
 | **One-Click Undo** | Full SQLite audit trail. Revert any move from the GUI or CLI. |
 | **Notification Mute** | Toggle desktop notifications from the tray or GUI. |
-| **Cross-Platform** | Native `.deb`, `.AppImage` (Linux) and `.dmg`, `.app` (macOS). |
+| **Cross-Platform** | Native `.deb`, `.AppImage` (Linux), `.dmg`, `.app` (macOS), `.msi` (Windows). |
 
 ---
 
@@ -81,6 +81,16 @@ chmod +x Autopilot_0.1.0_amd64.AppImage
 3. Launch from Launchpad or Finder
 
 > **First launch:** The app is ad-hoc signed. If Gatekeeper blocks it, right-click the app → **Open** → confirm.
+
+### Windows
+
+**`.msi`:**
+
+1. Double-click the `.msi`
+2. Follow the installer prompts
+3. Launch from the Start Menu
+
+> **First launch:** Windows SmartScreen may warn since the app is unsigned. Click **More info** → **Run anyway**.
 
 ---
 
@@ -202,6 +212,7 @@ Status badge in the GUI shows:
 - **Python path dependency:** The bundled app currently expects the repo at `~/Projects/Personal/aiagent-autopilot` with a working `.venv`. Standalone Python embedding is planned.
 - **Single watch folder:** Only `~/Downloads` is watched. Desktop/Documents expansion is on the roadmap.
 - **macOS signing:** Bundles are ad-hoc signed. Gatekeeper will warn on first launch — right-click → Open to allow.
+- **Windows signing:** `.msi` is unsigned. SmartScreen will warn on first launch — click **More info** → **Run anyway**.
 
 ---
 
@@ -210,7 +221,7 @@ Status badge in the GUI shows:
 - [ ] Bundle Python interpreter as a Tauri resource (fully standalone)
 - [ ] Watch `~/Desktop` and `~/Documents`
 - [ ] Drag-and-drop rule creation from Recent Actions
-- [ ] Windows support (`.msi`)
+- [x] Windows support (`.msi`)
 - [ ] Cloud LLM fallback tier for truly ambiguous files (optional, opt-in)
 
 ---

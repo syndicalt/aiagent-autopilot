@@ -99,6 +99,7 @@ name = "autopilot-gui"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "png",
  "rusqlite",
  "serde",
  "serde_json",

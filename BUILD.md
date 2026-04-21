@@ -28,6 +28,11 @@ sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev libf
 xcode-select --install
 ```
 
+### Windows
+- Install [Rust](https://rustup.rs/)
+- Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) with the **Desktop development with C++** workload
+- Ensure `python` is in your PATH
+
 ---
 
 ## Build Outputs
@@ -41,6 +46,12 @@ xcode-select --install
 - `.app` — Direct app bundle (can run unsigned with Right-click → Open)
 
 **Note:** macOS builds are ad-hoc signed by default. Gatekeeper may warn on first launch — right-click the app and select **Open** to allow it.
+
+### Windows
+- `.msi` — Double-click to install. Autopilot appears in Start Menu and can be uninstalled from Settings → Apps.
+- `.exe` — Portable binary (available alongside the `.msi` in the bundle directory)
+
+**Note:** Windows builds are unsigned. SmartScreen may warn on first launch — click **More info** → **Run anyway**.
 
 ---
 
@@ -58,16 +69,21 @@ Hot-reloads the frontend and restarts the Rust backend on change.
 ## Cross-Platform Notes
 
 Autopilot currently reads the Python agent from a hardcoded path:
-```
-~/Projects/Personal/aiagent-autopilot/.venv/bin/python
-```
+- **Linux/macOS:** `~/Projects/Personal/aiagent-autopilot/.venv/bin/python`
+- **Windows:** `C:\Users\<you>\Projects\Personal\aiagent-autopilot\.venv\Scripts\python.exe`
 
 For the bundle to work, you must:
 1. Have the repo cloned at that path
 2. Have the Python virtualenv created and dependencies installed:
    ```bash
+   # Linux/macOS
    python3 -m venv .venv
    source .venv/bin/activate
+   pip install -r requirements.txt
+
+   # Windows
+   python -m venv .venv
+   .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
