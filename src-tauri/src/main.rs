@@ -3,6 +3,7 @@ use tokio::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
 use tauri::Manager;
+use tauri::WindowEvent;
 use serde::Serialize;
 
 struct AgentState {
@@ -121,6 +122,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_agent, stop_agent, get_agent_status, get_recent_actions, undo_last
         ])
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_i])?;
