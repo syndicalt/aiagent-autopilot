@@ -15,6 +15,39 @@ fn log_path() -> PathBuf {
     dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.agent.log")
 }
 
+fn pid_path() -> PathBuf {
+    dirs::home_dir().expect("home dir").join("Downloads/Autopilot/.agent.pid")
+}
+
+fn is_pid_alive(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+fn read_agent_pid() -> Option<u32> {
+    let path = pid_path();
+    if !path.exists() {
+        return None;
+    }
+    std::fs::read_to_string(&path).ok()?.trim().parse().ok()
+}
+
+fn write_agent_pid(pid: u32) {
+    let path = pid_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(&path, pid.to_string());
+}
+
+fn clear_agent_pid() {
+    let _ = std::fs::remove_file(pid_path());
+}
+
 #[derive(Serialize)]
 struct Action {
     id: i64,
@@ -52,6 +85,15 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
     if child_guard.is_some() {
         return Ok("Already running".into());
     }
+
+    // System-level guard: check PID file for surviving agent processes
+    if let Some(pid) = read_agent_pid() {
+        if is_pid_alive(pid) {
+            return Ok("Already running".into());
+        }
+        clear_agent_pid();
+    }
+
     let proj = project_dir();
     let python = proj.join(".venv/bin/python");
     let script = proj.join("main.py");
@@ -61,8 +103,11 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
     if let Some(parent) = log.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let stderr_file = File::create(&log)
-        .map_err(|e| format!("Failed to create log file: {e}"))?;
+    let stderr_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log)
+        .map_err(|e| format!("Failed to open log file: {e}"))?;
 
     let child = tokio::process::Command::new(&python)
         .arg(&script)
@@ -71,6 +116,11 @@ async fn start_agent(state: tauri::State<'_, AgentState>) -> Result<String, Stri
         .stderr(stderr_file)
         .spawn()
         .map_err(|e| format!("Failed to start agent: {e}"))?;
+
+    if let Some(id) = child.id() {
+        write_agent_pid(id);
+    }
+
     *child_guard = Some(child);
     Ok("Agent started".into())
 }
@@ -94,13 +144,21 @@ async fn stop_agent(state: tauri::State<'_, AgentState>) -> Result<String, Strin
     if let Some(mut child) = child_guard.take() {
         let _ = child.kill().await;
     }
+    clear_agent_pid();
     Ok("Agent stopped".into())
 }
 
 #[tauri::command]
 async fn get_agent_status(state: tauri::State<'_, AgentState>) -> Result<bool, String> {
     let child_guard = state.child.lock().await;
-    Ok(child_guard.is_some())
+    if child_guard.is_some() {
+        return Ok(true);
+    }
+    // Also check PID file in case GUI restarted while agent kept running
+    if let Some(pid) = read_agent_pid() {
+        return Ok(is_pid_alive(pid));
+    }
+    Ok(false)
 }
 
 #[tauri::command]
@@ -236,6 +294,20 @@ pub fn run() {
                                 .arg("--toggle")
                                 .current_dir(&proj)
                                 .output();
+
+                            // Refresh tray menu label
+                            let muted = read_notifications_muted();
+                            let mute_label = if muted { "Unmute Notifications" } else { "Mute Notifications" };
+                            let new_mute_i = MenuItem::with_id(app, "mute", mute_label, true, None::<&str>);
+                            let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>);
+                            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>);
+                            if let (Ok(new_mute_i), Ok(open_i), Ok(quit_i)) = (new_mute_i, open_i, quit_i) {
+                                if let Ok(new_menu) = Menu::with_items(app, &[&open_i, &new_mute_i, &quit_i]) {
+                                    if let Some(tray) = app.tray_by_id("main") {
+                                        let _ = tray.set_menu(Some(new_menu));
+                                    }
+                                }
+                            }
                         }
                         _ => {}
                     }
