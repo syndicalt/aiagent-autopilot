@@ -293,24 +293,48 @@ async fn get_recent_actions(limit: i64) -> Result<Vec<Action>, String> {
 
 #[tauri::command]
 async fn get_smart_sort_status() -> Result<String, String> {
-    // Probe the brain service on localhost:8765
-    match reqwest::get("http://127.0.0.1:8765/status").await {
+    // Probe the brain/bus service on localhost:8765 with a short timeout
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(1))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[SmartSort] Failed to build HTTP client: {}", e);
+            return Ok("rules".into());
+        }
+    };
+
+    match client.get("http://127.0.0.1:8765/status").send().await {
         Ok(resp) => {
-            if let Ok(json) = resp.json::<serde_json::Value>().await {
-                let ready = json.get("ready").and_then(|v| v.as_bool()).unwrap_or(false);
-                let cloud_ready = json.get("cloud_ready").and_then(|v| v.as_bool()).unwrap_or(false);
-                if ready && cloud_ready {
-                    return Ok("cloud".into());
+            let status = resp.status();
+            if !status.is_success() {
+                eprintln!("[SmartSort] Bus returned HTTP {}", status);
+                return Ok("rules".into());
+            }
+            match resp.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    let ready = json.get("ready").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let cloud_ready = json.get("cloud_ready").and_then(|v| v.as_bool()).unwrap_or(false);
+                    if ready && cloud_ready {
+                        return Ok("cloud".into());
+                    }
+                    if ready {
+                        return Ok("local".into());
+                    }
+                    Ok("rules".into())
                 }
-                if ready {
-                    return Ok("local".into());
+                Err(e) => {
+                    eprintln!("[SmartSort] Failed to parse bus JSON: {}", e);
+                    Ok("rules".into())
                 }
             }
         }
-        Err(_) => {}
+        Err(e) => {
+            eprintln!("[SmartSort] Bus probe failed: {}", e);
+            Ok("rules".into())
+        }
     }
-    // No brain service detected — fall back to rules + heuristics
-    Ok("rules".into())
 }
 
 #[tauri::command]

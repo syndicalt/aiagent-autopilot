@@ -155,12 +155,16 @@ muteSwitch.addEventListener('change', async () => {
   }
 });
 
-// Poll every 3 seconds
+// Poll agent status + actions every 3 seconds
 setInterval(() => {
   updateStatus();
   loadActions();
-  updateSmartSortStatus();
 }, 3000);
+
+// Poll smart sort status every 1.5 seconds for responsive bus detection
+setInterval(() => {
+  updateSmartSortStatus();
+}, 1500);
 
 btnLogs.addEventListener('click', async () => {
   try {
