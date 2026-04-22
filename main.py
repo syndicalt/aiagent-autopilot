@@ -40,6 +40,15 @@ class DownloadsHandler(FileSystemEventHandler):
         except ValueError:
             pass
 
+        # Skip recently modified files (prevents undo loops)
+        try:
+            mtime = file_path.stat().st_mtime
+            if time.time() - mtime < 2.0:
+                print(f"[SKIP] Recently modified, ignoring: {file_path.name}")
+                return
+        except Exception:
+            pass
+
         # Skip if another handler is already processing this file
         if not _mark_processing(str(file_path)):
             return
