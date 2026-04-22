@@ -5,7 +5,7 @@
   "identifier": "com.autopilot.app",
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "cd .. && python3 scripts/build-agent.py",
+    "beforeBuildCommand": "python3 scripts/build-agent.py",
     "frontendDist": "../gui"
   },
   "app": {
