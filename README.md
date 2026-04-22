@@ -29,7 +29,7 @@ Drop a file into `~/Downloads`. Autopilot moves it to the right folder inside `~
 
 1. **User-defined rules** — Visual rule builder in the GUI. Highest priority.
 2. **Heuristics** — Fast extension + filename keyword matching.
-3. **Local AI embeddings (optional)** — `all-MiniLM-L6-v2` model via the Autopilot Brain service. Enabled automatically in dev mode; optional in the bundled app.
+3. **Local AI embeddings (optional)** — Via the [Autopilot Bus](https://github.com/syndicalt/autopilot-agent-bus) on `localhost:8765`. Install the bus separately for AI classification of ambiguous files.
 
 ---
 
@@ -136,13 +136,11 @@ Autopilot Agent (Rust GUI + Python watcher)
     Autopilot Brain       → FastAPI service hosting all-MiniLM-L6-v2
 ```
 
-The **Brain** is a separate optional service (`brain/main.py`) that runs the
-embedding model. When running from source, the agent auto-starts it. In the
-bundled app, the brain is not included (to keep install size small) — ambiguous
-files fall back to "Miscellaneous" instead of AI classification.
-
-Future releases may bundle the brain as an optional download or evolve it into
-`autopilot-agent-bus` — a standalone multi-app inference hub.
+The **[Autopilot Bus](https://github.com/syndicalt/autopilot-agent-bus)** is a
+separate optional service that hosts the embedding model and exposes
+classification APIs. When installed, Autopilot connects to it on
+`localhost:8765` for AI classification of ambiguous files. Without the bus,
+Autopilot falls back to rules + heuristics — which handle 90% of files.
 
 ---
 
@@ -160,9 +158,6 @@ aiagent-autopilot/
 ├── undo.py                    # CLI undo tool
 ├── config.py                  # Paths, extension → category mappings
 ├── requirements.txt           # Core Python dependencies (lean)
-├── brain/                     # Optional embedding inference service
-│   ├── main.py                # FastAPI server hosting all-MiniLM-L6-v2
-│   └── requirements.txt       # torch + sentence-transformers
 ├── gui/                       # Tauri frontend
 │   ├── index.html
 │   ├── style.css

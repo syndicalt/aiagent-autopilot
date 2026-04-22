@@ -9,10 +9,8 @@ build/
 *.spec
 !agent.spec
 
-# Allow stub files but ignore actual built binaries in resources
+# Tauri resources — contains large binaries, never commit
 src-tauri/resources/*
-!src-tauri/resources/autopilot-agent
-!src-tauri/resources/autopilot-agent.exe
 
 # Rust build artifacts
 src-tauri/target/
