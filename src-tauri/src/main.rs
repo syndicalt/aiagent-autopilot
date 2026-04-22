@@ -75,8 +75,7 @@ fn clear_agent_pid() {
 }
 
 /// Locate the bundled autopilot-agent sidecar binary, if it exists.
-/// Searches next to the current executable and in platform-specific
-/// resource directories (e.g. macOS app bundle Resources/).
+/// Searches next to the current executable and in the project resources dir.
 fn agent_binary_path() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
@@ -85,6 +84,18 @@ fn agent_binary_path() -> Option<PathBuf> {
         let candidate = dir.join(name);
         if candidate.exists() {
             return Some(candidate);
+        }
+    }
+
+    // Dev / local build: check src-tauri/resources/ relative to executable
+    // (exe is at target/debug/ or target/release/, grandparent is project root)
+    let project_root = dir.parent().and_then(|p| p.parent());
+    if let Some(root) = project_root {
+        for name in &["autopilot-agent", "autopilot-agent.exe"] {
+            let candidate = root.join("src-tauri").join("resources").join(name);
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
     }
 

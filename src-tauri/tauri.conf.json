@@ -47,10 +47,6 @@
       "minimumSystemVersion": "10.13",
       "signingIdentity": null
     },
-    "resources": {
-      "resources/autopilot-agent": "autopilot-agent",
-      "resources/autopilot-agent.exe": "autopilot-agent.exe"
-    },
     "linux": {
       "deb": {
         "depends": [
