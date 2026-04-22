@@ -191,6 +191,8 @@ loadRules();
 // Rules Engine UI
 // =====================
 let rules = [];
+let _saveTimeout = null;
+let _isSaving = false;
 
 const btnAddRule = document.getElementById('btn-add-rule');
 const rulesList = document.getElementById('rules-list');
@@ -198,6 +200,48 @@ const btnSaveRules = document.getElementById('btn-save-rules');
 const testFilename = document.getElementById('test-filename');
 const btnTestRules = document.getElementById('btn-test-rules');
 const testResults = document.getElementById('test-results');
+
+function debouncedAutoSave() {
+  if (_saveTimeout) clearTimeout(_saveTimeout);
+  btnSaveRules.textContent = 'Save Rules';
+  btnSaveRules.classList.remove('saved');
+  _saveTimeout = setTimeout(() => {
+    _doSaveRules(true);
+  }, 1200);
+}
+
+async function _doSaveRules(silent = false) {
+  if (_isSaving) return;
+  _isSaving = true;
+
+  // Normalize extension values
+  for (const rule of rules) {
+    for (const cond of rule.conditions || []) {
+      if (cond.field === 'extension' && cond.value) {
+        cond.value = cond.value.replace(/^\.+/, '');
+      }
+    }
+  }
+
+  try {
+    await invoke('save_rules', { rules });
+    if (!silent) {
+      alert('Rules saved.');
+    } else {
+      btnSaveRules.textContent = 'Saved';
+      btnSaveRules.classList.add('saved');
+      setTimeout(() => {
+        btnSaveRules.textContent = 'Save Rules';
+        btnSaveRules.classList.remove('saved');
+      }, 2000);
+    }
+  } catch (e) {
+    if (!silent) alert('Failed to save rules: ' + e);
+    console.error('Save rules error:', e);
+  } finally {
+    _isSaving = false;
+  }
+}
 
 function createEmptyRule() {
   return {
@@ -241,6 +285,7 @@ function renderRules() {
     nameInput.placeholder = 'Rule name';
     nameInput.addEventListener('input', () => {
       rules[index].name = nameInput.value;
+      debouncedAutoSave();
     });
 
     const enabledLabel = document.createElement('label');
@@ -250,6 +295,7 @@ function renderRules() {
     enabledBox.checked = rule.enabled !== false;
     enabledBox.addEventListener('change', () => {
       rules[index].enabled = enabledBox.checked;
+      debouncedAutoSave();
     });
     enabledLabel.appendChild(enabledBox);
     enabledLabel.appendChild(document.createTextNode('Enabled'));
@@ -261,6 +307,7 @@ function renderRules() {
     delBtn.addEventListener('click', () => {
       rules.splice(index, 1);
       renderRules();
+      debouncedAutoSave();
     });
 
     header.appendChild(nameInput);
@@ -288,6 +335,7 @@ function renderRules() {
       fieldSel.value = cond.field || 'filename';
       fieldSel.addEventListener('change', () => {
         rules[index].conditions[cidx].field = fieldSel.value;
+        debouncedAutoSave();
       });
 
       const opSel = document.createElement('select');
@@ -310,6 +358,7 @@ function renderRules() {
       opSel.value = cond.operator || 'equals';
       opSel.addEventListener('change', () => {
         rules[index].conditions[cidx].operator = opSel.value;
+        debouncedAutoSave();
       });
 
       const valInput = document.createElement('input');
@@ -319,6 +368,7 @@ function renderRules() {
       valInput.placeholder = 'value';
       valInput.addEventListener('input', () => {
         rules[index].conditions[cidx].value = valInput.value;
+        debouncedAutoSave();
       });
 
       const remBtn = document.createElement('button');
@@ -328,6 +378,7 @@ function renderRules() {
       remBtn.addEventListener('click', () => {
         rules[index].conditions.splice(cidx, 1);
         renderRules();
+        debouncedAutoSave();
       });
 
       row.appendChild(fieldSel);
@@ -344,6 +395,7 @@ function renderRules() {
       rules[index].conditions = rules[index].conditions || [];
       rules[index].conditions.push({ field: 'extension', operator: 'equals', value: '' });
       renderRules();
+      debouncedAutoSave();
     });
 
     // Action
@@ -366,6 +418,7 @@ function renderRules() {
       rules[index].action = rules[index].action || {};
       rules[index].action.type = actionType.value;
       renderRules();
+      debouncedAutoSave();
     });
 
     actionRow.appendChild(actionType);
@@ -379,6 +432,7 @@ function renderRules() {
       targetInput.addEventListener('input', () => {
         rules[index].action = rules[index].action || {};
         rules[index].action.target = targetInput.value;
+        debouncedAutoSave();
       });
       actionRow.appendChild(targetInput);
     }
@@ -396,6 +450,7 @@ function renderRules() {
       if (index > 0) {
         [rules[index], rules[index - 1]] = [rules[index - 1], rules[index]];
         renderRules();
+        debouncedAutoSave();
       }
     });
 
@@ -406,6 +461,7 @@ function renderRules() {
       if (index < rules.length - 1) {
         [rules[index], rules[index + 1]] = [rules[index + 1], rules[index]];
         renderRules();
+        debouncedAutoSave();
       }
     });
 
@@ -426,31 +482,12 @@ function renderRules() {
 btnAddRule.addEventListener('click', () => {
   rules.push(createEmptyRule());
   renderRules();
+  debouncedAutoSave();
 });
 
-btnSaveRules.addEventListener('click', async () => {
-  for (const rule of rules) {
-    if (!rule.name || !rule.name.trim()) {
-      alert('All rules must have a name.');
-      return;
-    }
-    if (rule.action && rule.action.type === 'move_to' && (!rule.action.target || !rule.action.target.trim())) {
-      alert('Rule "' + rule.name + '" needs a target category.');
-      return;
-    }
-    // Normalize extension values: strip leading dots so ".pdf" becomes "pdf"
-    for (const cond of rule.conditions || []) {
-      if (cond.field === 'extension' && cond.value) {
-        cond.value = cond.value.replace(/^\.+/, '');
-      }
-    }
-  }
-  try {
-    await invoke('save_rules', { rules });
-    alert('Rules saved.');
-  } catch (e) {
-    alert('Failed to save rules: ' + e);
-  }
+btnSaveRules.addEventListener('click', () => {
+  if (_saveTimeout) clearTimeout(_saveTimeout);
+  _doSaveRules(false);
 });
 
 btnTestRules.addEventListener('click', async () => {
