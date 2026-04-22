@@ -243,9 +243,14 @@ Status badge in the GUI shows:
 ## Roadmap
 
 - [x] Bundle Python interpreter as a Tauri resource (fully standalone)
+- [x] Windows support (`.msi`)
+- [ ] Venv-free deployment — see [DEPLOYMENT.md](DEPLOYMENT.md)
+  - [ ] Package `autopilot-brain` as standalone PyInstaller binary
+  - [ ] Package `autopilot-bus` as standalone PyInstaller binary
+  - [ ] Agent auto-discovers brain/bus at runtime
+  - [ ] Explore ONNX Runtime to shrink brain from 2 GB → 150 MB
 - [ ] Watch `~/Desktop` and `~/Documents`
 - [ ] Drag-and-drop rule creation from Recent Actions
-- [x] Windows support (`.msi`)
 - [ ] Cloud LLM fallback tier for truly ambiguous files (optional, opt-in)
 
 ---
