@@ -1,5 +1,7 @@
 import time
 import threading
+import subprocess
+import sys
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -9,6 +11,37 @@ from classifier import classify_file
 from organizer import organize
 from notifier import notify
 from embedding_classifier import warm_up
+
+
+def _ensure_brain():
+    """Start the brain service if it's not already running."""
+    import urllib.request
+    try:
+        urllib.request.urlopen("http://127.0.0.1:8765/status", timeout=0.5)
+        return  # Already running
+    except Exception:
+        pass
+
+    proj_root = Path(__file__).parent
+    brain_main = proj_root / "brain" / "main.py"
+    python = sys.executable
+
+    if not brain_main.exists():
+        print("[BRAIN] brain/main.py not found; skipping brain launch")
+        return
+
+    print("[BRAIN] Starting embedding service...")
+    try:
+        subprocess.Popen(
+            [python, str(brain_main)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        # Give it a moment to bind
+        time.sleep(1.5)
+    except Exception as e:
+        print(f"[BRAIN] Failed to start: {e}")
 
 # Thread-safe deduplication: tracks files currently being processed
 _processing_lock = threading.Lock()
@@ -73,7 +106,8 @@ def main():
     print(f"👀 Watching {DOWNLOADS_DIR} for new files...")
     print("Press Ctrl+C to stop.\n")
 
-    # Proactive model warm-up in background so first classification is instant
+    # Start the brain service if available, then warm up the model
+    _ensure_brain()
     threading.Thread(target=warm_up, daemon=True).start()
 
     observer = Observer()

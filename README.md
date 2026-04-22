@@ -29,7 +29,7 @@ Drop a file into `~/Downloads`. Autopilot moves it to the right folder inside `~
 
 1. **User-defined rules** — Visual rule builder in the GUI. Highest priority.
 2. **Heuristics** — Fast extension + filename keyword matching.
-3. **Local AI embeddings** — `all-MiniLM-L6-v2` model for ambiguous files. Downloads once (~80MB), runs entirely offline.
+3. **Local AI embeddings (optional)** — `all-MiniLM-L6-v2` model via the Autopilot Brain service. Enabled automatically in dev mode; optional in the bundled app.
 
 ---
 
@@ -125,6 +125,27 @@ See [BUILD.md](BUILD.md) for detailed platform-specific build instructions.
 
 ---
 
+## Architecture
+
+```
+Autopilot Agent (Rust GUI + Python watcher)
+    ├── Rules Engine      → user-defined JSON rules (highest priority)
+    ├── Heuristics        → extension/filename mapping
+    └── Brain Client      → HTTP to localhost:8765 (optional AI tier)
+            ↓
+    Autopilot Brain       → FastAPI service hosting all-MiniLM-L6-v2
+```
+
+The **Brain** is a separate optional service (`brain/main.py`) that runs the
+embedding model. When running from source, the agent auto-starts it. In the
+bundled app, the brain is not included (to keep install size small) — ambiguous
+files fall back to "Miscellaneous" instead of AI classification.
+
+Future releases may bundle the brain as an optional download or evolve it into
+`autopilot-agent-bus` — a standalone multi-app inference hub.
+
+---
+
 ## Project Structure
 
 ```
@@ -132,13 +153,16 @@ aiagent-autopilot/
 ├── main.py                    # Agent entry point (watchdog + dedup)
 ├── classifier.py              # Three-tier classifier (rules → heuristics → AI)
 ├── rules_engine.py            # User-defined sort rules engine
-├── embedding_classifier.py    # Local AI model (all-MiniLM-L6-v2)
+├── embedding_classifier.py    # HTTP client for Brain service
 ├── organizer.py               # File mover + SQLite action logger
 ├── notifier.py                # Cross-platform desktop notifications
 ├── settings.py                # JSON settings persistence
 ├── undo.py                    # CLI undo tool
 ├── config.py                  # Paths, extension → category mappings
-├── requirements.txt           # Python dependencies
+├── requirements.txt           # Core Python dependencies (lean)
+├── brain/                     # Optional embedding inference service
+│   ├── main.py                # FastAPI server hosting all-MiniLM-L6-v2
+│   └── requirements.txt       # torch + sentence-transformers
 ├── gui/                       # Tauri frontend
 │   ├── index.html
 │   ├── style.css

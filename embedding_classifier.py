@@ -1,68 +1,65 @@
-import threading
+"""
+Thin HTTP client for the Autopilot Brain embedding service.
+
+When the brain is running on localhost:8765, this module delegates
+to it. When the brain is unavailable, it falls back to Miscellaneous
+so the agent never blocks on network failures.
+
+The brain service (brain/main.py) must be started separately or via
+auto-launch from main.py.
+"""
+
+import urllib.request
+import urllib.error
+import json
 from pathlib import Path
-from typing import Optional
-import numpy as np
 
-# Lazy-loaded model state
-_model = None
-_category_embeddings: Optional[np.ndarray] = None
-_category_names: Optional[list] = None
-_lock = threading.Lock()
+BRAIN_URL = "http://127.0.0.1:8765"
 
-# Descriptions that capture the semantic space of each category
-CATEGORY_DESCRIPTIONS = {
-    "Images": "photos pictures screenshots jpg png gif images graphics",
-    "Documents": "documents text pdf word doc txt essays articles reports",
-    "Receipts": "receipts invoices bills purchases orders payments transactions",
-    "Audio": "audio music mp3 wav sound podcasts recordings",
-    "Video": "video movies mp4 mov clips recordings films",
-    "Archives": "archives zip tar compressed backups packages",
-    "Code": "code programming scripts source files software development",
-    "Installers": "installers applications setup executables packages dmg",
-    "Miscellaneous": "miscellaneous other unknown files assorted items",
-}
 
-def _ensure_model():
-    """Lazily load the sentence-transformers model. Thread-safe."""
-    global _model, _category_embeddings, _category_names
-    if _model is not None:
-        return
+def _brain_available() -> bool:
+    try:
+        urllib.request.urlopen(f"{BRAIN_URL}/status", timeout=0.5)
+        return True
+    except Exception:
+        return False
 
-    with _lock:
-        if _model is not None:
-            return
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-
-        # Pre-compute category embeddings
-        _category_names = list(CATEGORY_DESCRIPTIONS.keys())
-        texts = list(CATEGORY_DESCRIPTIONS.values())
-        _category_embeddings = _model.encode(texts, convert_to_numpy=True)
-
-def warm_up():
-    """Force immediate model download and load. Call this on agent start."""
-    print("[Smart Sort] Warming up embedding model...")
-    _ensure_model()
-    print("[Smart Sort] Ready.")
-
-def is_model_ready() -> bool:
-    return _model is not None
-
-def classify_text(text: str) -> str:
-    """Classify a piece of text into the closest category using embeddings."""
-    _ensure_model()
-    if _model is None or _category_embeddings is None:
-        return "Miscellaneous"
-
-    text_embedding = _model.encode([text], convert_to_numpy=True)
-    # Cosine similarity via dot product (vectors are normalized by the model)
-    similarities = np.dot(_category_embeddings, text_embedding.T).flatten()
-    best_idx = int(np.argmax(similarities))
-    return _category_names[best_idx]
 
 def classify_file(file_path: Path) -> str:
-    """Create a rich text representation of a file and classify it."""
-    name = file_path.stem.lower().replace("_", " ").replace("-", " ")
-    ext = file_path.suffix.lstrip(".").lower()
-    text = f"{name} {ext}"
-    return classify_text(text)
+    """
+    Ask the brain service to classify a file. Falls back to Miscellaneous
+    if the brain is not running or returns an error.
+    """
+    if not _brain_available():
+        return "Miscellaneous"
+
+    try:
+        req = urllib.request.Request(
+            f"{BRAIN_URL}/classify-file",
+            data=json.dumps({"path": str(file_path)}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            result = json.loads(resp.read().decode())
+            return result.get("category", "Miscellaneous")
+    except Exception:
+        return "Miscellaneous"
+
+
+def warm_up():
+    """Ping the brain to trigger lazy model loading in the background."""
+    try:
+        urllib.request.urlopen(f"{BRAIN_URL}/status", timeout=2.0)
+    except Exception:
+        pass
+
+
+def is_model_ready() -> bool:
+    """Check whether the brain service has the model loaded."""
+    try:
+        with urllib.request.urlopen(f"{BRAIN_URL}/status", timeout=0.5) as resp:
+            result = json.loads(resp.read().decode())
+            return result.get("ready", False)
+    except Exception:
+        return False
