@@ -36,13 +36,17 @@ async function updateStatus() {
 
 async function updateSmartSortStatus() {
   try {
-    const ready = await invoke('get_smart_sort_status');
-    if (ready) {
+    const mode = await invoke('get_smart_sort_status');
+    smartSortBadge.classList.remove('ready', 'cloud');
+
+    if (mode === 'cloud') {
+      smartSortBadge.textContent = 'Smart Sort: Cloud';
+      smartSortBadge.classList.add('cloud');
+    } else if (mode === 'local') {
       smartSortBadge.textContent = 'Smart Sort: Local';
       smartSortBadge.classList.add('ready');
     } else {
-      smartSortBadge.textContent = 'Smart Sort: Setting up...';
-      smartSortBadge.classList.remove('ready');
+      smartSortBadge.textContent = 'Smart Sort: Rules';
     }
   } catch (e) {
     console.error('Smart sort status error:', e);

@@ -82,11 +82,16 @@ class ClassifyRequest(BaseModel):
 class StatusResponse(BaseModel):
     ready: bool
     model: str
+    cloud_ready: bool = False
 
 
 @app.get("/status", response_model=StatusResponse)
 def status():
-    return StatusResponse(ready=_model is not None, model="all-MiniLM-L6-v2")
+    return StatusResponse(
+        ready=_model is not None,
+        model="all-MiniLM-L6-v2",
+        cloud_ready=False,  # Internal brain has no cloud jet
+    )
 
 
 @app.post("/embed")

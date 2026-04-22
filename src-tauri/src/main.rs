@@ -292,10 +292,25 @@ async fn get_recent_actions(limit: i64) -> Result<Vec<Action>, String> {
 }
 
 #[tauri::command]
-async fn get_smart_sort_status() -> Result<bool, String> {
-    let home = dirs::home_dir().ok_or("no home")?;
-    let cache = home.join(".cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2");
-    Ok(cache.exists())
+async fn get_smart_sort_status() -> Result<String, String> {
+    // Probe the brain service on localhost:8765
+    match reqwest::get("http://127.0.0.1:8765/status").await {
+        Ok(resp) => {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                let ready = json.get("ready").and_then(|v| v.as_bool()).unwrap_or(false);
+                let cloud_ready = json.get("cloud_ready").and_then(|v| v.as_bool()).unwrap_or(false);
+                if ready && cloud_ready {
+                    return Ok("cloud".into());
+                }
+                if ready {
+                    return Ok("local".into());
+                }
+            }
+        }
+        Err(_) => {}
+    }
+    // No brain service detected — fall back to rules + heuristics
+    Ok("rules".into())
 }
 
 #[tauri::command]
